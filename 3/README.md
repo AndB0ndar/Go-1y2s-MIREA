@@ -123,7 +123,7 @@ curl -i http://localhost:8082/tasks \
 docker-compose up --build
 ```
 
-![start](./img/startng)
+![start](./img/start.png)
 
 ### Проверка логирования
 Выполните команды из раздела 5 и наблюдайте логи в консоли каждого сервиса. Убедитесь, что request-id одинаков в обоих сервисах.
