@@ -8,8 +8,6 @@ on:
 
 env:
   GO_VERSION: '1.21'
-  TASKS_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/tasks-service
-  AUTH_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/auth-service
 
 jobs:
   test:
@@ -156,6 +154,10 @@ jobs:
           echo "Latest practice directory: $latest"
           echo "BASE_DIR=$latest" >> $GITHUB_ENV
 
+      - name: Set lowercase repository name
+        run: |
+          echo "LOWER_REPO=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -175,8 +177,8 @@ jobs:
             VERSION=$(git rev-parse --short HEAD)
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tags_auth=${{ env.AUTH_IMAGE_NAME }}:$VERSION,${{ env.AUTH_IMAGE_NAME }}:latest" >> $GITHUB_OUTPUT
-          echo "tags_tasks=${{ env.TASKS_IMAGE_NAME }}:$VERSION,${{ env.TASKS_IMAGE_NAME }}:latest" >> $GITHUB_OUTPUT
+          echo "tags_auth=ghcr.io/${LOWER_REPO}/auth-service:$VERSION,ghcr.io/${LOWER_REPO}/auth-service:latest" >> $GITHUB_OUTPUT
+          echo "tags_tasks=ghcr.io/${LOWER_REPO}/tasks-service:$VERSION,ghcr.io/${LOWER_REPO}/tasks-service:latest" >> $GITHUB_OUTPUT
 
       - name: Build and push auth image
         uses: docker/build-push-action@v5
