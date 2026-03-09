@@ -48,25 +48,36 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Run tests for auth
+      - name: Debug module and workspace setup
+        working-directory: ${{ env.BASE_DIR }}
         run: |
-          cd ${{ env.BASE_DIR }}
-          go test ./services/auth/...
+          echo "=== go.work content ==="
+          cat go.work || echo "no go.work"
+          echo "=== shared/go.mod (if any) ==="
+          cat shared/go.mod || echo "shared/go.mod not found"
+          echo "=== services/auth/go.mod ==="
+          cat services/auth/go.mod
+          echo "=== services/auth/go.mod dependencies ==="
+          go mod why -m app/shared || echo "app/shared not required"
+          echo "=== current directory ==="
+          pwd
+          ls -la
+
+      - name: Run tests for auth
+        working-directory: ${{ env.BASE_DIR }}
+        run: go test ./services/auth/...
 
       - name: Run tests for tasks
-        run: |
-          cd ${{ env.BASE_DIR }}
-          go test ./services/tasks/...
+        working-directory: ${{ env.BASE_DIR }}
+        run: go test ./services/tasks/...
 
       - name: Build auth binary
-        run: |
-          cd ${{ env.BASE_DIR }}
-          go build -o /dev/null ./services/auth/cmd/auth
+        working-directory: ${{ env.BASE_DIR }}
+        run: go build -o /dev/null ./services/auth/cmd/auth
 
       - name: Build tasks binary
-        run: |
-          cd ${{ env.BASE_DIR }}
-          go build -o /dev/null ./services/tasks/cmd/tasks
+        working-directory: ${{ env.BASE_DIR }}
+        run: go build -o /dev/null ./services/tasks/cmd/tasks
 
   docker:
     name: Build and Push Docker images
