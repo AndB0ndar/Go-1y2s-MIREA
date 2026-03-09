@@ -49,20 +49,20 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Run tests for auth
-        working-directory: ${{ env.BASE_DIR }}/services/auth
-        run: go test ./...
+        working-directory: ${{ env.BASE_DIR }}
+        run: go test ./services/auth...
 
       - name: Run tests for tasks
-        working-directory: ${{ env.BASE_DIR }}/services/tasks
-        run: go test ./...
+        working-directory: ${{ env.BASE_DIR }}
+        run: go test ./services/tasks/...
 
       - name: Build auth binary
-        working-directory: ${{ env.BASE_DIR }}/services/auth
-        run: go build -o /dev/null ./cmd/auth
+        working-directory: ${{ env.BASE_DIR }}
+        run: go build -o /dev/null ./services/auth/cmd/auth
 
       - name: Build tasks binary
-        working-directory: ${{ env.BASE_DIR }}/services/tasks
-        run: go build -o /dev/null ./cmd/tasks
+        working-directory: ${{ env.BASE_DIR }}
+        run: go build -o /dev/null ./services/tasks/cmd/tasks
 
   docker:
     name: Build and Push Docker images
