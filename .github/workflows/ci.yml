@@ -48,20 +48,20 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Run lint for auth
-        working-directory: ${{ env.BASE_DIR }}/services/auth
-        run: go vet ./...
+        working-directory: ${{ env.BASE_DIR }}
+        run: go vet ./services/auth/...
 
       - name: Run tests for auth
-        working-directory: ${{ env.BASE_DIR }}/services/auth
-        run: go test -short ./... || echo "No tests found"
+        working-directory: ${{ env.BASE_DIR }}
+        run: go test -short ./services/auth/... || echo "No tests found"
 
       - name: Run lint for tasks
-        working-directory: ${{ env.BASE_DIR }}/services/tasks
-        run: go vet -short ./... || echo "No tests found"
+        working-directory: ${{ env.BASE_DIR }}
+        run: go vet -short ./services/tasks/... || echo "No tests found"
 
       - name: Run tests for tasks
-        working-directory: ${{ env.BASE_DIR }}/services/tasks
-        run: go test -short ./... || echo "No tests found"
+        working-directory: ${{ env.BASE_DIR }}
+        run: go test -short ./services/tasks/... || echo "No tests found"
 
   build:
     name: Build binaries
@@ -100,24 +100,24 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Build auth binary
-        working-directory: ${{ env.BASE_DIR }}/services/auth
-        run: go build -o auth-server ./cmd/auth
+        working-directory: ${{ env.BASE_DIR }}
+        run: go build -o auth-server ./services/auth/cmd/auth
 
       - name: Build tasks binary
-        working-directory: ${{ env.BASE_DIR }}/services/tasks
-        run: go build -o tasks-server ./cmd/tasks
+        working-directory: ${{ env.BASE_DIR }}
+        run: go build -o tasks-server ./services/tasks/cmd/tasks
 
       - name: Upload auth binary as artifact
         uses: actions/upload-artifact@v4
         with:
           name: auth-binary
-          path: ${{ env.BASE_DIR }}/services/auth/auth-server
+          path: ${{ env.BASE_DIR }}/auth-server
 
       - name: Upload tasks binary as artifact
         uses: actions/upload-artifact@v4
         with:
           name: tasks-binary
-          path: ${{ env.BASE_DIR }}/services/tasks/tasks-server
+          path: ${{ env.BASE_DIR }}/tasks-server
 
   docker:
     name: Build and Push Docker images
