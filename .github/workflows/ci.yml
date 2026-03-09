@@ -50,7 +50,7 @@ jobs:
 
       - name: Run tests for auth
         working-directory: ${{ env.BASE_DIR }}
-        run: go test ./services/auth...
+        run: go test ./services/auth/...
 
       - name: Run tests for tasks
         working-directory: ${{ env.BASE_DIR }}
