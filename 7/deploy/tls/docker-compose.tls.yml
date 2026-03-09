@@ -1,0 +1,16 @@
+services:
+  nginx:
+    image: nginx:latest
+    container_name: nginx-tls
+    ports:
+      - "8443:8443"  # HTTPS
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./cert.pem:/etc/nginx/tls/cert.pem:ro
+      - ./key.pem:/etc/nginx/tls/key.pem:ro
+    networks:
+      - app-network
+    depends_on:
+      tasks:
+        condition: service_healthy
+
