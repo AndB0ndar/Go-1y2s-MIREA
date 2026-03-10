@@ -21,23 +21,20 @@
 **Файл:** `services/auth/Dockerfile`
 ```dockerfile
 # Stage 1: Builder
-FROM golang:1.21-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
-# Копируем файлы зависимостей (для кеширования)
-COPY services/auth/go.mod services/auth/go.sum ./services/auth/
-COPY shared/go.mod shared/go.sum ./shared/
+COPY shared/ ./shared/
+COPY services/auth/go.mod services/auth/go.sum* ./services/auth/
 
 WORKDIR /app/services/auth
 RUN go mod download
 
-# Копируем остальной код
-COPY services/auth/ ./services/auth/
-COPY shared/ ./shared/
+COPY services/auth/ ./
 
-# Сборка бинарного файла
 RUN go build -o /auth-server ./cmd/auth
+
 
 # Stage 2: Runner
 FROM alpine:latest

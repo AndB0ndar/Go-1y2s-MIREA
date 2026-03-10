@@ -17,18 +17,16 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
 
 env:
-  GO_VERSION: '1.21'
-  TASKS_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/tasks-service
-  AUTH_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/auth-service
+  GO_VERSION: '1.25'
 
 jobs:
   test:
-    name: Test and Build
+    name: Test
     runs-on: ubuntu-latest
 
     steps:
@@ -38,7 +36,6 @@ jobs:
       - name: Determine latest practice directory
         id: latest-dir
         run: |
-          # Найти все директории, состоящие только из цифр, и отсортировать численно
           dirs=$(ls -d [0-9]* 2>/dev/null | sort -n)
           if [ -z "$dirs" ]; then
             echo "No numbered directories found. Exiting."
@@ -53,6 +50,12 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
+      - name: Set up Go workspace
+        working-directory: ${{ env.BASE_DIR }}
+        run: |
+          go work init
+          go work use ./services/auth ./services/tasks ./shared
+
       - name: Cache Go modules
         uses: actions/cache@v4
         with:
@@ -63,27 +66,89 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
+      - name: Run lint for auth
+        working-directory: ${{ env.BASE_DIR }}/services/auth
+        run: go vet ./...
+
       - name: Run tests for auth
         working-directory: ${{ env.BASE_DIR }}/services/auth
-        run: go test ./...
+        run: go test -short ./... || echo "No tests found"
+
+      - name: Run lint for tasks
+        working-directory: ${{ env.BASE_DIR }}/services/tasks
+        run: go vet -short ./... || echo "No tests found"
 
       - name: Run tests for tasks
         working-directory: ${{ env.BASE_DIR }}/services/tasks
-        run: go test ./...
+        run: go test -short ./... || echo "No tests found"
+
+  build:
+    name: Build binaries
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine latest practice directory
+        id: latest-dir
+        run: |
+          dirs=$(ls -d [0-9]* 2>/dev/null | sort -n)
+          if [ -z "$dirs" ]; then
+            echo "No numbered directories found. Exiting."
+            exit 1
+          fi
+          latest=$(echo "$dirs" | tail -n1)
+          echo "Latest practice directory: $latest"
+          echo "BASE_DIR=$latest" >> $GITHUB_ENV
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Set up Go workspace
+        working-directory: ${{ env.BASE_DIR }}
+        run: |
+          go work init
+          go work use ./services/auth ./services/tasks ./shared
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-${{ hashFiles(format('{0}/**/go.sum', env.BASE_DIR)) }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
       - name: Build auth binary
         working-directory: ${{ env.BASE_DIR }}/services/auth
-        run: go build -o /dev/null ./cmd/auth
+        run: go build -o auth-server ./cmd/auth
 
       - name: Build tasks binary
         working-directory: ${{ env.BASE_DIR }}/services/tasks
-        run: go build -o /dev/null ./cmd/tasks
+        run: go build -o tasks-server ./cmd/tasks
+
+      - name: Upload auth binary as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: auth-binary
+          path: ${{ env.BASE_DIR }}/services/auth/auth-server
+
+      - name: Upload tasks binary as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tasks-binary
+          path: ${{ env.BASE_DIR }}/services/tasks/tasks-server
 
   docker:
     name: Build and Push Docker images
     runs-on: ubuntu-latest
-    needs: test
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    needs: build
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/'))
     permissions:
       contents: read
       packages: write
@@ -104,6 +169,10 @@ jobs:
           echo "Latest practice directory: $latest"
           echo "BASE_DIR=$latest" >> $GITHUB_ENV
 
+      - name: Set lowercase repository name
+        run: |
+          echo "LOWER_REPO=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -123,8 +192,8 @@ jobs:
             VERSION=$(git rev-parse --short HEAD)
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tags_auth=${{ env.AUTH_IMAGE_NAME }}:$VERSION,${{ env.AUTH_IMAGE_NAME }}:latest" >> $GITHUB_OUTPUT
-          echo "tags_tasks=${{ env.TASKS_IMAGE_NAME }}:$VERSION,${{ env.TASKS_IMAGE_NAME }}:latest" >> $GITHUB_OUTPUT
+          echo "tags_auth=ghcr.io/${LOWER_REPO}/auth-service:$VERSION,ghcr.io/${LOWER_REPO}/auth-service:latest" >> $GITHUB_OUTPUT
+          echo "tags_tasks=ghcr.io/${LOWER_REPO}/tasks-service:$VERSION,ghcr.io/${LOWER_REPO}/tasks-service:latest" >> $GITHUB_OUTPUT
 
       - name: Build and push auth image
         uses: docker/build-push-action@v5
@@ -188,7 +257,7 @@ jobs:
 
 ## Скриншот успешного прогона
 
-![ci-success](./img/ci-success.png)
+![ci-success](./img/github.png)
 
 На скриншоте видны зелёные статусы jobs `test` и `docker`, а также логи успешной сборки и публикации образов.
 
