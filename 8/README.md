@@ -259,7 +259,9 @@ jobs:
 
 ![ci-success](./img/github.png)
 
-На скриншоте видны зелёные статусы jobs `test` и `docker`, а также логи успешной сборки и публикации образов.
+На скриншоте видны синие статусы jobs `test` и `docker`.
+
+Полученные Docker-образов можно получить по ссылке *https://github.com/AndB0ndar?tab=packages&repo_name=Go-1y2s-MIREA*.
 
 ---
 
@@ -282,7 +284,7 @@ jobs:
 
 В pipeline используется только автоматически генерируемый `GITHUB_TOKEN` с правами `packages: write`. Никаких дополнительных секретов не требуется, так как публикация идёт во встроенный GitHub Container Registry.
 
-Если бы потребовался внешний registry (например, Docker Hub), были бы добавлены секреты `DOCKER_USERNAME` и `DOCKER_PASSWORD`, хранящиеся в настройках репозитория (Settings → Secrets and variables).
+Если бы потребовался внешний registry (например, Docker Hub), были бы добавлены секреты `DOCKER_USERNAME` и `DOCKER_PASSWORD`, хранящиеся в настройках репозитория (Settings -> Secrets and variables).
 
 ---
 
