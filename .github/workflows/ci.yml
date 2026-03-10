@@ -146,7 +146,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: .services/auth/Dockerfile
+          file: ./services/auth/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags_auth }}
           cache-from: type=gha
