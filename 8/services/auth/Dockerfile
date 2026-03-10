@@ -3,14 +3,17 @@ FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
-COPY services/auth/go.mod services/auth/go.sum ./services/auth/
-COPY shared/go.mod shared/go.sum ./shared/
+COPY go.work go.work.sum* ./
+COPY services/tasks/go.mod services/tasks/go.sum* ./services/tasks/
+COPY services/auth/go.mod services/auth/go.sum* ./services/auth/
+COPY shared/go.mod shared/go.sum* ./shared/
 
-WORKDIR /app/services/auth
 RUN go mod download
 
 COPY services/auth/ ./services/auth/
 COPY shared/ ./shared/
+
+WORKDIR /app/services/auth
 
 RUN go build -o /auth-server ./cmd/auth
 
