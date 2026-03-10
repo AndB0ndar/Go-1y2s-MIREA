@@ -3,6 +3,7 @@ module app/services/auth
 go 1.25.7
 
 require (
+	app/shared v0.0.0
 	github.com/google/uuid v1.6.0
 	github.com/sirupsen/logrus v1.9.4
 	google.golang.org/grpc v1.79.1
@@ -15,3 +16,5 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
 )
+
+replace app/shared => ../../shared
