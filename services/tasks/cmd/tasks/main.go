@@ -4,7 +4,11 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"strconv"
 
+    _ "github.com/lib/pq"
+
+	"app/services/tasks/internal/cache"
 	"app/services/tasks/internal/repository"
 	"app/services/tasks/internal/server"
 	"app/shared/logger"
@@ -22,6 +26,7 @@ func main() {
 		authGRPCAddr = "localhost:50051"
 	}
 
+	// DB
 	dbHost := os.Getenv("DB_HOST")
 	dbPort := os.Getenv("DB_PORT")
 	dbUser := os.Getenv("DB_USER")
@@ -38,7 +43,32 @@ func main() {
 	if err := db.Ping(); err != nil {
 		panic(err)
 	}
-	repo := repository.NewPostgresRepo(db)
+	var repo repository.TaskRepository
+	repo = repository.NewPostgresRepo(db)
+
+	// Redis
+    redisAddr := os.Getenv("REDIS_ADDR")
+    if redisAddr == "" {
+        redisAddr = "localhost:6379"
+    }
+    redisPassword := os.Getenv("REDIS_PASSWORD")
+    cacheTTL, _ := strconv.Atoi(os.Getenv("CACHE_TTL_SECONDS"))
+    if cacheTTL == 0 {
+        cacheTTL = 120
+    }
+    cacheJitter, _ := strconv.Atoi(os.Getenv("CACHE_TTL_JITTER_SECONDS"))
+    if cacheJitter == 0 {
+        cacheJitter = 30
+    }
+
+    redisClient, err := cache.NewRedisClient(redisAddr, redisPassword, 0, log)
+    if err != nil {
+        log.WithError(err).Warn("Redis unavailable, continuing without cache")
+    } else {
+        repo = repository.NewCachedTaskRepository(
+			repo, redisClient, log, cacheTTL, cacheJitter,
+		)
+	}
 
 	srv := server.NewServer(port, authGRPCAddr, repo, log)
 	log.WithField("port", port).Info("Tasks service starting")
