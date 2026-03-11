@@ -17,7 +17,7 @@ import (
 )
 
 func NewServer(
-	port, authGRPCAddr string, repo repository.TaskRepository, log *logrus.Logger,
+	port, authGRPCAddr, instanceID string, repo repository.TaskRepository, log *logrus.Logger,
 ) *http.Server {
 	grpcClient, err := auth.NewGRPCAuthClient(authGRPCAddr, 3*time.Second, log)
 	if err != nil {
@@ -28,27 +28,30 @@ func NewServer(
 
 	mux := http.NewServeMux()
 
-	mux.Handle("GET /tasks", middleware.Auth(grpcClient, log)(http.HandlerFunc(taskHandler.List)))
-	mux.Handle("GET /tasks/{id}", middleware.Auth(grpcClient, log)(http.HandlerFunc(taskHandler.Get)))
-
-	mux.Handle("GET /tasks/search", middleware.Auth(grpcClient, log)(http.HandlerFunc(taskHandler.Search)))
-	mux.Handle("GET /tasks/searchvulnerable", middleware.Auth(grpcClient, log)(http.HandlerFunc(taskHandler.SearchVulnerable)))
-
-	postHandler := middleware.Auth(grpcClient, log)(middleware.CSRFProtection(log)(http.HandlerFunc(taskHandler.Create)))
-	mux.Handle("POST /tasks", postHandler)
-	patchHandler := middleware.Auth(grpcClient, log)(middleware.CSRFProtection(log)(http.HandlerFunc(taskHandler.Update)))
-	mux.Handle("PATCH /tasks/{id}", patchHandler)
-	deleteHandler := middleware.Auth(grpcClient, log)(middleware.CSRFProtection(log)(http.HandlerFunc(taskHandler.Delete)))
-	mux.Handle("DELETE /tasks/{id}", deleteHandler)
-
+	mux.HandleFunc("GET /health", handlers.Health())
 	mux.HandleFunc("GET /metrics", metrics.MetricsHandler().ServeHTTP)
 
-	mux.HandleFunc("GET /health", handlers.HealthCheck(log))
+	authMiddleware := middleware.Auth(grpcClient, log)
+	csrfMiddleware := middleware.CSRFProtection(log)
+
+	mux.Handle("GET /tasks", authMiddleware(http.HandlerFunc(taskHandler.List)))
+	mux.Handle("GET /tasks/{id}", authMiddleware(http.HandlerFunc(taskHandler.Get)))
+
+	mux.Handle("GET /tasks/search", authMiddleware(http.HandlerFunc(taskHandler.Search)))
+	mux.Handle("GET /tasks/searchvulnerable", authMiddleware(http.HandlerFunc(taskHandler.SearchVulnerable)))
+
+	postHandler := authMiddleware(csrfMiddleware(http.HandlerFunc(taskHandler.Create)))
+	mux.Handle("POST /tasks", postHandler)
+	patchHandler := authMiddleware(csrfMiddleware(http.HandlerFunc(taskHandler.Update)))
+	mux.Handle("PATCH /tasks/{id}", patchHandler)
+	deleteHandler := authMiddleware(csrfMiddleware(http.HandlerFunc(taskHandler.Delete)))
+	mux.Handle("DELETE /tasks/{id}", deleteHandler)
 
 	handler := shared_middleware.RequestID(mux)
 	handler = shared_middleware.SecurityHeaders(handler)
 	handler = shared_middleware.AccessLog(log)(handler)
 	handler = metrics.MetricsMiddleware(handler)
+	handler = middleware.InstanceID(instanceID)(handler)
 
 	return &http.Server{
 		Addr:    fmt.Sprintf(":%s", port),

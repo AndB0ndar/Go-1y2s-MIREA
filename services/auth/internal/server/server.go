@@ -18,7 +18,7 @@ func NewServer(
 	mux.HandleFunc("POST /auth/login", handlers.Login(authService, log))
 	mux.HandleFunc("GET /auth/verify", handlers.Verify(authService, log))
 
-	mux.HandleFunc("GET /health", handlers.HealthCheck(log))
+	mux.HandleFunc("GET /health", handlers.Health())
 
 	// middleware: RequestID -> SecurityHeaders -> Logging -> ...
 	handler := middleware.RequestID(mux)

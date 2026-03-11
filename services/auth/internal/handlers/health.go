@@ -1,13 +1,18 @@
 package handlers
 
 import (
-    "net/http"
-    "github.com/sirupsen/logrus"
+	"encoding/json"
+	"net/http"
 )
 
-func HealthCheck(log *logrus.Logger) http.HandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
-        w.WriteHeader(http.StatusOK)
-        w.Write([]byte("OK"))
-    }
+type HealthResponse struct {
+	Status string `json:"status"`
+}
+
+func Health() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(HealthResponse{Status: "ok"})
+	}
 }
