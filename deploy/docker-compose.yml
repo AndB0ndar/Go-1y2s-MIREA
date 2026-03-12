@@ -61,6 +61,29 @@ services:
     networks:
       - app-network
 
+  graphql:
+    build:
+      context: ..
+      dockerfile: services/graphql/Dockerfile
+    container_name: graphql
+    environment:
+      - GRAPHQL_PORT=8090
+      - AUTH_GRPC_ADDR=auth:50051
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=tasks_user
+      - DB_PASSWORD=tasks_pass
+      - DB_NAME=tasks_db
+    ports:
+      - "8090:8090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+    networks:
+      - app-network
+
   tasks:
     build:
       context: ..

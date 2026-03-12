@@ -4,7 +4,12 @@ import "net/http"
 
 func SecurityHeaders(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        w.Header().Set("Content-Security-Policy", "default-src 'self'")
+        // for Playground allow downloading from CDN
+        if r.URL.Path == "/" || r.URL.Path == "/query" {
+			w.Header().Set("Content-Security-Policy", "default-src *; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline'; font-src * data:;")
+        } else {
+            w.Header().Set("Content-Security-Policy", "default-src 'self'")
+        }
         w.Header().Set("X-Content-Type-Options", "nosniff")
         w.Header().Set("X-Frame-Options", "DENY")
         w.Header().Set("X-XSS-Protection", "1; mode=block")
