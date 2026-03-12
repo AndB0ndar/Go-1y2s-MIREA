@@ -8,7 +8,6 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
-	//"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/sirupsen/logrus"
 
 	"app/services/graphql/graph/generated"
@@ -31,9 +30,8 @@ func NewServer(port, authGRPCAddr string, db *sql.DB, log *logrus.Logger) *http.
 
 	// GraphQL resolver
 	resolver := &resolvers.Resolver{Repo: repo}
-	srv := handler.NewDefaultServer(
-		generated.NewExecutableSchema(generated.Config{Resolvers: resolver}),
-	)
+	config := generated.Config{Resolvers: resolver}
+	srv := handler.NewDefaultServer(generated.NewExecutableSchema(config))
 
 	mux := http.NewServeMux()
 	//mux.Handle("/", transport.GraphiQL{Endpoint: "/query"})
