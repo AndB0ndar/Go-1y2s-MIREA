@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	_ "github.com/lib/pq"
+	amqp "github.com/rabbitmq/amqp091-go"
 
 	"app/services/tasks/internal/cache"
 	"app/services/tasks/internal/repository"
@@ -75,7 +76,26 @@ func main() {
 		)
 	}
 
-	srv := server.NewServer(port, authGRPCAddr, instanceID, repo, log)
+	// RabbitMQ
+	rabbitURL := os.Getenv("RABBIT_URL")
+	if rabbitURL == "" {
+		rabbitURL = "amqp://guest:guest@localhost:5672/"
+	}
+	queueName := os.Getenv("QUEUE_NAME")
+	if queueName == "" {
+		queueName = "task_events"
+	}
+
+	rabbitConn, err := amqp.Dial(rabbitURL)
+	if err != nil {
+		log.WithError(err).Warn("failed to connect to RabbitMQ, proceeding without publisher")
+		rabbitConn = nil
+	} else {
+		log.Info("connected to RabbitMQ")
+	}
+
+	srv := server.NewServer(port, authGRPCAddr, instanceID, repo, log, rabbitConn, queueName)
+
 	log.WithField("port", port).Info("Tasks service starting")
 	if err := srv.ListenAndServe(); err != nil {
 		log.WithError(err).Fatal("server failed")

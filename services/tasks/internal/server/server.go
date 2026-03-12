@@ -6,6 +6,7 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
+	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/sirupsen/logrus"
 
 	"app/services/tasks/internal/auth"
@@ -17,14 +18,18 @@ import (
 )
 
 func NewServer(
-	port, authGRPCAddr, instanceID string, repo repository.TaskRepository, log *logrus.Logger,
+	port, authGRPCAddr, instanceID string,
+	repo repository.TaskRepository,
+	log *logrus.Logger,
+	rabbitConn *amqp.Connection,
+	queueName string,
 ) *http.Server {
 	grpcClient, err := auth.NewGRPCAuthClient(authGRPCAddr, 3*time.Second, log)
 	if err != nil {
 		log.WithError(err).Fatal("failed to create auth client")
 	}
 
-	taskHandler := handlers.NewTaskHandler(repo, log)
+	taskHandler := handlers.NewTaskHandler(repo, log, rabbitConn, queueName)
 
 	mux := http.NewServeMux()
 

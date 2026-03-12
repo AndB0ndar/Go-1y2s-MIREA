@@ -57,4 +57,3 @@ func (r *MutationResolver) DeleteTask(ctx context.Context, id string) (bool, err
 	}
 	return true, nil
 }
-

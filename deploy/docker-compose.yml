@@ -41,6 +41,25 @@ services:
       retries: 5
       start_period: 10s
 
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - app-network
+
   auth:
     build:
       context: ..
@@ -101,6 +120,8 @@ services:
       - REDIS_PASSWORD=
       - CACHE_TTL_SECONDS=120
       - CACHE_TTL_JITTER_SECONDS=30
+      - RABBIT_URL=amqp://guest:guest@rabbitmq:5672/
+      - QUEUE_NAME=task_events
     ports:
       - "8082:8082"  # HTTP (/tasks)
     healthcheck:
@@ -116,8 +137,24 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
       auth:
         condition: service_healthy
+
+  worker:
+    build:
+      context: ..
+      dockerfile: services/worker/Dockerfile
+    container_name: worker
+    environment:
+      - RABBIT_URL=amqp://guest:guest@rabbitmq:5672/
+      - QUEUE_NAME=task_events
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - app-network
 
 networks:
   app-network:
@@ -125,4 +162,5 @@ networks:
 
 volumes:
   postgres_data:
+  rabbitmq_data:
 

@@ -1,7 +1,7 @@
 package resolvers
 
 import (
-    "app/services/graphql/graph/generated"
+	"app/services/graphql/graph/generated"
 	"app/services/graphql/internal/repository"
 )
 
@@ -10,18 +10,17 @@ type Resolver struct {
 }
 
 func (r *Resolver) Task() generated.TaskResolver {
-    return &TaskResolver{r}
+	return &TaskResolver{r}
 }
 
 func (r *Resolver) Query() generated.QueryResolver {
-    return &QueryResolver{r}
+	return &QueryResolver{r}
 }
 
 func (r *Resolver) Mutation() generated.MutationResolver {
-    return &MutationResolver{r}
+	return &MutationResolver{r}
 }
 
 type QueryResolver struct{ *Resolver }
 type MutationResolver struct{ *Resolver }
 type TaskResolver struct{ *Resolver }
-
