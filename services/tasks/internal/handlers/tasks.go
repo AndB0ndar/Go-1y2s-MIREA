@@ -5,9 +5,7 @@ import (
 	"html"
 	"net/http"
 	"strings"
-	"time"
 
-	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/sirupsen/logrus"
 
 	"app/services/tasks/internal/repository"
@@ -15,23 +13,17 @@ import (
 )
 
 type TaskHandler struct {
-	repo       repository.TaskRepository
-	log        *logrus.Logger
-	rabbitConn *amqp.Connection
-	queueName  string
+	repo repository.TaskRepository
+	log  *logrus.Logger
 }
 
 func NewTaskHandler(
 	repo repository.TaskRepository,
 	log *logrus.Logger,
-	rabbitConn *amqp.Connection,
-	queueName string,
 ) *TaskHandler {
 	return &TaskHandler{
-		repo:       repo,
-		log:        log,
-		rabbitConn: rabbitConn,
-		queueName:  queueName,
+		repo: repo,
+		log:  log,
 	}
 }
 
@@ -66,11 +58,6 @@ func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 			w, `{"error":"internal error"}`, http.StatusInternalServerError,
 		)
 		return
-	}
-
-	// public event in RabbitMQ (best effort)
-	if h.rabbitConn != nil {
-		go h.publishTaskCreatedEvent(task.ID)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -217,59 +204,4 @@ func (h *TaskHandler) SearchVulnerable(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(tasks)
-}
-
-func (h *TaskHandler) publishTaskCreatedEvent(taskID string) {
-	ch, err := h.rabbitConn.Channel()
-	if err != nil {
-		h.log.WithError(err).Error("failed to open channel for publishing")
-		return
-	}
-	defer ch.Close()
-
-	// Объявляем очередь (на всякий случай, если она ещё не создана)
-	_, err = ch.QueueDeclare(
-		h.queueName,
-		true,  // durable
-		false, // autoDelete
-		false, // exclusive
-		false, // noWait
-		nil,   // args
-	)
-	if err != nil {
-		h.log.WithError(err).Error("failed to declare queue")
-		return
-	}
-
-	event := map[string]interface{}{
-		"event":   "task.created",
-		"task_id": taskID,
-		"ts":      time.Now().UTC().Format(time.RFC3339),
-	}
-	body, err := json.Marshal(event)
-	if err != nil {
-		h.log.WithError(err).Error("failed to marshal event")
-		return
-	}
-
-	msg := amqp.Publishing{
-		ContentType:  "application/json",
-		Body:         body,
-		DeliveryMode: amqp.Persistent, // persistent message
-		MessageId:    taskID,
-		Timestamp:    time.Now(),
-	}
-
-	err = ch.Publish(
-		"",          // exchange
-		h.queueName, // routing key (queue name)
-		true,        // mandatory
-		false,       // immediate
-		msg,
-	)
-	if err != nil {
-		h.log.WithError(err).Error("failed to publish message")
-	} else {
-		h.log.WithField("task_id", taskID).Info("published task.created event")
-	}
 }

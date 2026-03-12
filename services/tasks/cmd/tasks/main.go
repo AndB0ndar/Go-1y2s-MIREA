@@ -81,9 +81,9 @@ func main() {
 	if rabbitURL == "" {
 		rabbitURL = "amqp://guest:guest@localhost:5672/"
 	}
-	queueName := os.Getenv("QUEUE_NAME")
-	if queueName == "" {
-		queueName = "task_events"
+	taskQueue := os.Getenv("JOB_QUEUE")
+	if taskQueue == "" {
+		taskQueue = "task_jobs"
 	}
 
 	rabbitConn, err := amqp.Dial(rabbitURL)
@@ -94,7 +94,7 @@ func main() {
 		log.Info("connected to RabbitMQ")
 	}
 
-	srv := server.NewServer(port, authGRPCAddr, instanceID, repo, log, rabbitConn, queueName)
+	srv := server.NewServer(port, authGRPCAddr, instanceID, repo, log, rabbitConn, taskQueue)
 
 	log.WithField("port", port).Info("Tasks service starting")
 	if err := srv.ListenAndServe(); err != nil {

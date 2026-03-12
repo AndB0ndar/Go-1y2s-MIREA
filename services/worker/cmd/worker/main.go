@@ -5,6 +5,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/sirupsen/logrus"
 
 	"app/services/worker/internal/consumer"
@@ -18,27 +19,34 @@ func main() {
 	if rabbitURL == "" {
 		rabbitURL = "amqp://guest:guest@localhost:5672/"
 	}
-	queueName := os.Getenv("QUEUE_NAME")
-	if queueName == "" {
-		queueName = "task_events"
+	queue := os.Getenv("JOB_QUEUE")
+	if queue == "" {
+		queue = "task_jobs"
+	}
+	dlqQueue := os.Getenv("DLQ_QUEUE")
+	if dlqQueue == "" {
+		dlqQueue = "task_jobs_dlq"
 	}
 
-	cons, err := consumer.NewConsumer(rabbitURL, queueName, log)
+	conn, err := amqp.Dial(rabbitURL)
 	if err != nil {
-		log.WithError(err).Fatal("failed to create consumer")
+		log.WithError(err).Fatal("failed to connect to RabbitMQ")
 	}
-	defer cons.Close()
+	defer conn.Close()
 
-	// Graceful shutdown
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+	jobConsumer := consumer.NewJobConsumer(conn, queue, dlqQueue, log)
+
 	go func() {
-		<-sig
-		log.Info("shutting down consumer...")
-		cons.Close()
-		os.Exit(0)
+		if err := jobConsumer.Start(); err != nil {
+			log.WithError(err).Fatal("job consumer failed")
+		}
 	}()
 
-	log.Info("worker started, consuming messages...")
-	cons.Consume()
+	log.Info("worker started")
+
+	// Graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Info("shutting down")
 }

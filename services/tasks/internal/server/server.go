@@ -22,14 +22,15 @@ func NewServer(
 	repo repository.TaskRepository,
 	log *logrus.Logger,
 	rabbitConn *amqp.Connection,
-	queueName string,
+	taskQueue string,
 ) *http.Server {
 	grpcClient, err := auth.NewGRPCAuthClient(authGRPCAddr, 3*time.Second, log)
 	if err != nil {
 		log.WithError(err).Fatal("failed to create auth client")
 	}
 
-	taskHandler := handlers.NewTaskHandler(repo, log, rabbitConn, queueName)
+	jobHandler := handlers.NewJobHandler(rabbitConn, taskQueue, log)
+	taskHandler := handlers.NewTaskHandler(repo, log)
 
 	mux := http.NewServeMux()
 
@@ -51,6 +52,9 @@ func NewServer(
 	mux.Handle("PATCH /tasks/{id}", patchHandler)
 	deleteHandler := authMiddleware(csrfMiddleware(http.HandlerFunc(taskHandler.Delete)))
 	mux.Handle("DELETE /tasks/{id}", deleteHandler)
+
+	processTaskHandler := authMiddleware(csrfMiddleware(http.HandlerFunc(jobHandler.ProcessTask)))
+	mux.Handle("POST /jobs/process-task", processTaskHandler)
 
 	handler := shared_middleware.RequestID(mux)
 	handler = shared_middleware.SecurityHeaders(handler)
