@@ -1,70 +1,16 @@
-name: go-4
+name: go
 
 include:
+  - infra/docker-compose.infra.yml
   - monitoring/docker-compose.monitoring.yml
   - tls/docker-compose.tls.yml
 
 services:
-  postgres:
-    image: postgres:15
-    container_name: postgres
-    environment:
-      POSTGRES_USER: tasks_user
-      POSTGRES_PASSWORD: tasks_pass
-      POSTGRES_DB: tasks_db
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ../migrations:/docker-entrypoint-initdb.d
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tasks_user -d tasks_db"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-      start_period: 20s
-    networks:
-      - app-network
-
-  redis:
-    image: redis:7-alpine
-    container_name: redis
-    ports:
-      - "6379:6379"
-    networks:
-      - app-network
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
-  rabbitmq:
-    image: rabbitmq:4-management-alpine
-    container_name: rabbitmq
-    ports:
-      - "5672:5672"   # AMQP
-      - "15672:15672" # Management UI
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-    networks:
-      - app-network
-
   auth:
     build:
       context: ..
       dockerfile: services/auth/Dockerfile
-    container_name: auth-service
+    container_name: auth
     environment:
       - AUTH_PORT=8081
       - AUTH_GRPC_PORT=50051
@@ -107,7 +53,7 @@ services:
     build:
       context: ..
       dockerfile: services/tasks/Dockerfile
-    container_name: tasks-service
+    container_name: tasks
     environment:
       - TASKS_PORT=8082
       - AUTH_GRPC_ADDR=auth:50051
@@ -160,8 +106,4 @@ services:
 networks:
   app-network:
     driver: bridge
-
-volumes:
-  postgres_data:
-  rabbitmq_data:
 

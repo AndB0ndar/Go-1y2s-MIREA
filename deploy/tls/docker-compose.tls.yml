@@ -1,7 +1,9 @@
+name: tls
+
 services:
   nginx:
     image: nginx:latest
-    container_name: nginx-tls
+    container_name: nginx
     ports:
       - "8443:8443"  # HTTPS
     volumes:
