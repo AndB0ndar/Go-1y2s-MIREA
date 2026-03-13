@@ -40,7 +40,7 @@ func NewServer(port, authGRPCAddr string, db *sql.DB, log *logrus.Logger) *http.
 
 	// Middleware
 	handler := shared_middleware.RequestID(mux)
-	handler = shared_middleware.SecurityHeaders(handler)
+	//handler = shared_middleware.SecurityHeaders(handler)
 	handler = shared_middleware.AccessLog(log)(handler)
 	if authClient != nil {
 		handler = middleware.AuthMiddleware(authClient, log)(handler)
